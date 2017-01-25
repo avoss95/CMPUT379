@@ -30,20 +30,29 @@ int main() {
 
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
-  int i;
+  int i, count = 0;
   int max = pow(2,32);
 
   for (i=0; i<max; i++) {
     
-    if (strncmp(*i, *pattern, patlength) == 0)  // I feel like strncmp won't work because i is an int, not a string.  possible to convert?
+    if (strncmp(*i, *pattern, patlength) == 0)  //  we're dereferencing i -> in this case it should be whatever data is stored at that address.... except it might not be a string.... how to compare?
       {
 	// if we get to this point this means that the pattern has been found
+	count += 1;
 
-	// need to return in locations array the location where the pattern was found
-	// need to do all the required stuff below -> create a function for that?
+	struct patmatch match; // create a instance of the patmatch struct to store the current match in
+	match.location = i; // set the location of the match to the current address -> might change depending on how the meeting on Friday goes
+
+	match.mode = NULL; // I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
+
+	// so I still need to add this struct to the *locations array (an array of structs of type patmatch)
+	// don't remember how to do that but it's on the list of things to do
+
       }
 
   }
+
+  return(count);
 
 }
 

@@ -77,5 +77,8 @@ void sig_segv_handler(int sig)
   
   (void) signal(SIGSEGV, SIG_IGN);
 
+  // a segfault only happens when we're trying to read from memory that can't be read
+  // we'll somehow need to use those fun setjmp() and longjmp() functions to deal with that
+  //
 
  }

@@ -50,18 +50,15 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     
     if (strncmp(*i, *pattern, patlength) == 0)  //  we're dereferencing i -> in this case it should be whatever data is stored at that address.... except it might not be a string.... how to compare?
       {
-	// if we get to this point this means that the pattern has been found
-	count += 1;
 
 	struct patmatch match; // create a instance of the patmatch struct to store the current match in
 	match.location = i; // set the location of the match to the current address -> might change depending on how the meeting on Friday goes
 
 	match.mode = NULL; // I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
 
-	// so I still need to add this struct to the *locations array (an array of structs of type patmatch)
-	// don't remember how to do that but it's on the list of things to do
-
 	locations[count] = match;  // I think ? this is (assuming this is the first match found) putting the match in the first spot in the locations array
+
+	count += 1; // can only increment after adding the match to the list since otherwise we would be off by one
 
       }
 

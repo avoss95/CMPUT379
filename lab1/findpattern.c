@@ -30,8 +30,21 @@ int main() {
 
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
-  int i, count = 0;
+  int j, i, count = 0;
   int max = pow(2,32);
+
+  // might need to initialize the *locations array to 0 using the loclength
+
+  for (j=0; j<loclength; j++) {
+    
+    locations[j].location = 0;
+    // no idea if this is proper syntax or not- I really need to brush up on my C pointer knowledge
+    // maybe this is why I didn't do too well on this section on the 201 final?
+    locations[j].mode = NULL;
+    
+    // with this now done, we can safely modify the array *locations by inserting structs into the correct locations
+    
+  }
 
   for (i=0; i<max; i++) {
     
@@ -47,6 +60,8 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	// so I still need to add this struct to the *locations array (an array of structs of type patmatch)
 	// don't remember how to do that but it's on the list of things to do
+
+	locations[count] = match;  // I think ? this is (assuming this is the first match found) putting the match in the first spot in the locations array
 
       }
 

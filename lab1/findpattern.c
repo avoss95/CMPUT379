@@ -15,13 +15,17 @@ struct patmatch {
 };
 
 
+jmp_buf env;
 
+// global variable so that env can be used in my signal handler as well as my loop
 
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
   int j, i, pagesize, count = 0;
-  int max = pow(2,32);
-  jmp_buf env;
+  double max = pow(2,32);
+  int num_increments = 0;
+  char * temp;
+  int v = 0;
 
   // might need to initialize the *locations array to 0 using the loclength
 
@@ -43,6 +47,8 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
     if (j == 1) {
 
+      i += 1;
+      //do I even need to do this?  
       pagesize = getpagesize(); 
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
@@ -51,15 +57,25 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
     }
 
-    
-    if (strncmp(*i, *pattern, patlength) == 0) 
-      //  we're dereferencing i -> in this case it should be whatever data is stored at that address.... except it might not be a string.... how to compare?
+    temp = (char *) i;
+
+    while (*(temp+v) == pattern[v])
+      // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *i and *pattern match (the specific byte we're looking at)
+      {
+	v += 1;
+	*pattern += 1;
+	num_increments += 1;
+      } 
+      
+
+    if (num_increments == patlength)
+      // hyopthetically, this should ensure that we found a match exactly equal to the pattern (not shorter or longer)
       {
 
 	struct patmatch match; 
 	// create a instance of the patmatch struct to store the current match in
 	match.location = i; 
-	// set the location of the match to the current address -> might change depending on how the meeting on Friday goes
+	// set the location of the match to the current address
 
 	match.mode = NULL; 
 	// I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here

@@ -1,2 +1,2 @@
 findpattern: findpattern.c
-	gcc -std=c99 -o findpattern -lm
+	gcc findpattern.c -o findpattern -lm -m32

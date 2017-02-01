@@ -34,7 +34,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     locations[j].location = 0;
     // no idea if this is proper syntax or not- I really need to brush up on my C pointer knowledge
     // maybe this is why I didn't do too well on that section of the 201 final?
-    locations[j].mode = NULL;
+    locations[j].mode = MEM_RO;
     
     // with this now done, we can safely modify the array *locations by inserting structs into the correct locations
     
@@ -42,18 +42,16 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
   for (i=0; i<max; i++) {
 
-    j = setjmp(env); 
-    //is this the right spot for setjmp()?
+    j = sigsetjmp(env, 1); 
+    // put setjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
     if (j == 1) {
 
-      i += 1;
+      //i += 1;
       //do I even need to do this?  
       pagesize = getpagesize(); 
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
-      j = 0; 
-      //set j back to 0 so that this section of code can be executed again
 
     }
 
@@ -74,17 +72,35 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	struct patmatch match; 
 	// create a instance of the patmatch struct to store the current match in
+
 	match.location = i; 
 	// set the location of the match to the current address
-
-	match.mode = NULL; 
-	// I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
 
 	locations[count] = match;  
 	// I think ? this is (assuming this is the first match found) putting the match in the first spot in the locations array
 
 	count += 1; 
 	// can only increment after adding the match to the list since otherwise we would be off by one
+	
+	// I've started by assuming that the memory is RO
+	// try to write- if it succeeds, change to RW
+	// otherwise, leave it as is
+
+	//j = sigsetjmp(env, 1);
+	// so if we get a segfault, it will jump back here 
+
+	// crap- if I do the write here, and it segfaults, we get stuck in an infinite loop....
+
+	if (j == 1) {
+
+	  // if j == 1, then a segfault happened
+	  // segfault means memory is RO, otherwise it is RW
+
+	  
+	}
+
+	//match.mode = MEM_RW; 
+	// I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
 
       }
 
@@ -101,13 +117,9 @@ void sig_segv_handler(int sig)
   (void) signal(SIGSEGV, SIG_IGN);
 
   // a segfault only happens when we're trying to read from memory that can't be read
-  // we'll somehow need to use those fun setjmp() and longjmp() functions to deal with that
   
 
-
-
-
-  longjmp(env, 1);   
+  siglongjmp(env, 1);   
   //I think this is the right spot for longjmp()- the error has been handled, so we want to go back 
 
  }
@@ -121,6 +133,13 @@ int main() {
 
   // call findpattern() at some point, with all the required arguments
   // pretty sure that's all main() will do- call findpattern().... I think
+
+  char * pattern = "a";
+  unsigned int patlength = 2;
+  struct patmatch *locations;
+  unsigned int loclength = 5;
+
+  findpattern(pattern, patlength, locations, loclength);
 
   return 0;
 

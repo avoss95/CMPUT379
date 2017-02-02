@@ -21,11 +21,11 @@ jmp_buf env;
 
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
-  int j, i, pagesize, count = 0;
-  double max = pow(2,32);
+  int j, pagesize, count = 0;
+  long i, max = pow(2,32);
   int num_increments = 0;
   char * temp;
-  int v = 0;
+  int v;
 
   // might need to initialize the *locations array to 0 using the loclength
 
@@ -40,31 +40,42 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     
   }
 
-  for (i=0; i<max; i++) {
+  for (i=0; i<max; i+=4) {
 
-    printf("We have reached the first sigsetjmp()\n");
     j = sigsetjmp(env, 1);
-    printf("j = %d\n", j);
+    // printf("j = %d\n", j);
     // put setjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
     if (j == 1) {
 
-      printf("We are insdide the if section\n");
+
       //i += 1;
       //do I even need to do this?  
       pagesize = getpagesize(); 
+      
+      // printf("pagesize = %d\n", pagesize);
 
-      printf("We gave completed the getpagesize() \n");
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
 
+
+
     }
 
+    //    printf("i = %d\n", i);
+
     temp = (char *) i;
+
+    //    printf("dereferenced i\n");
+
+    v = 0;
+
+    //printf("temp = %c\n", *temp);
 
     while (*(temp+v) == pattern[v])
       // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *i and *pattern match (the specific byte we're looking at)
       {
+	//	printf("Made it into the while loop\n");
 	v += 1;
 	*pattern += 1;
 	num_increments += 1;
@@ -117,9 +128,9 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 void sig_segv_handler(int sig) 
 {
-  printf("This is the signal handler for SIGSEGV\n");
+  //  printf("This is the signal handler for SIGSEGV\n");
   
-  (void) signal(SIGSEGV, SIG_IGN);
+  //  (void) signal(SIGSEGV, SIG_IGN);
 
   // a segfault only happens when we're trying to read from memory that can't be read
   

@@ -42,14 +42,19 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
   for (i=0; i<max; i++) {
 
-    j = sigsetjmp(env, 1); 
+    printf("We have reached the first sigsetjmp()\n");
+    j = sigsetjmp(env, 1);
+    printf("j = %d\n", j);
     // put setjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
     if (j == 1) {
 
+      printf("We are insdide the if section\n");
       //i += 1;
       //do I even need to do this?  
       pagesize = getpagesize(); 
+
+      printf("We gave completed the getpagesize() \n");
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
 
@@ -135,7 +140,7 @@ int main() {
   // pretty sure that's all main() will do- call findpattern().... I think
 
   char * pattern = "a";
-  unsigned int patlength = 2;
+  unsigned int patlength = 1;
   struct patmatch *locations;
   unsigned int loclength = 5;
 

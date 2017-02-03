@@ -22,62 +22,64 @@ jmp_buf env;
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
   int j, pagesize, count = 0;
-  long i, max = pow(2,32);
+  double i, max = pow(2,32);
   int num_increments = 0;
-  char * temp;
+  char *  temp;
   int v;
+
+  long double temp2 = 1000000;
 
   // might need to initialize the *locations array to 0 using the loclength
 
   for (j=0; j<loclength; j++) {
-    
+
     locations[j].location = 0;
     // no idea if this is proper syntax or not- I really need to brush up on my C pointer knowledge
     // maybe this is why I didn't do too well on that section of the 201 final?
     locations[j].mode = MEM_RO;
-    
     // with this now done, we can safely modify the array *locations by inserting structs into the correct locations
-    
-  }
 
-  for (i=0; i<max; i+=4) {
+   }
+
+  for (i=0; i<max; i+=100024) {
 
     j = sigsetjmp(env, 1);
-    // printf("j = %d\n", j);
+    
+    //    printf("j = %d\n", j);
     // put setjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
     if (j == 1) {
 
-
-      //i += 1;
-      //do I even need to do this?  
       pagesize = getpagesize(); 
       
-      // printf("pagesize = %d\n", pagesize);
+      //printf("pagesize = %d\n", pagesize);
 
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
 
-
-
     }
-
-    //    printf("i = %d\n", i);
+    
+    
+    
+    //printf("%n\n");
+    printf("i =   %lf\n", i);
+    //printf("max = %Lf\n", max);
+    // sleep(1);
+    
 
     temp = (char *) i;
 
-    //    printf("dereferenced i\n");
 
     v = 0;
 
-    //printf("temp = %c\n", *temp);
+    //    printf("temp = %c\n", *temp);
 
     while (*(temp+v) == pattern[v])
       // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *i and *pattern match (the specific byte we're looking at)
       {
 	//	printf("Made it into the while loop\n");
-	v += 1;
-	*pattern += 1;
+    	v += 1;
+	//*pattern += 1; this is redundant since we're incrementing v anyways
 	num_increments += 1;
       } 
       
@@ -86,7 +88,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
       // hyopthetically, this should ensure that we found a match exactly equal to the pattern (not shorter or longer)
       {
 
-	struct patmatch match; 
+    	struct patmatch match; 
 	// create a instance of the patmatch struct to store the current match in
 
 	match.location = i; 
@@ -107,34 +109,40 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	// crap- if I do the write here, and it segfaults, we get stuck in an infinite loop....
 
-	if (j == 1) {
+	//	if (j == 1) {
 
 	  // if j == 1, then a segfault happened
 	  // segfault means memory is RO, otherwise it is RW
 
 	  
-	}
+	//	}
 
 	//match.mode = MEM_RW; 
 	// I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
+      //	i += v;
 
+	// need to move on past the located pattern
+
+    //	printf("Found a match.\n");
+
+    //	sleep(5);
       }
 
   }
 
   return(count);
-
+  //printf("end of loop\n");
+  //return(1);
 }
 
 void sig_segv_handler(int sig) 
 {
-  //  printf("This is the signal handler for SIGSEGV\n");
+  //printf("This is the signal handler for SIGSEGV\n");
   
   //  (void) signal(SIGSEGV, SIG_IGN);
 
   // a segfault only happens when we're trying to read from memory that can't be read
   
-
   siglongjmp(env, 1);   
   //I think this is the right spot for longjmp()- the error has been handled, so we want to go back 
 
@@ -145,17 +153,30 @@ void sig_segv_handler(int sig)
 
 int main() {
 
-  (void) signal(SIGSEGV, sig_segv_handler);
+  //  (void) signal(SIGSEGV, sig_segv_handler);
+
+  struct sigaction act;
+  act.sa_handler = sig_segv_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction(SIGSEGV, &act, 0);
 
   // call findpattern() at some point, with all the required arguments
   // pretty sure that's all main() will do- call findpattern().... I think
 
   char * pattern = "a";
   unsigned int patlength = 1;
-  struct patmatch *locations;
+  struct patmatch locations[5];
   unsigned int loclength = 5;
 
   findpattern(pattern, patlength, locations, loclength);
+
+  // double i, max = pow(2,32);
+  //printf("max = %Lf\n", max);
+
+  //for (i=0; i<max; i+=1024) {
+  // printf("i = %lf\n", i);
+  //}
 
   return 0;
 

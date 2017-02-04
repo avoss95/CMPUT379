@@ -64,7 +64,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     
     
     
-    printf("i = %lli\n", i);
+    //printf("i = %lli\n", i);
 
     temp = (char *) i;
     // I can't do this because a double can't be turned into a char *; however, an int can
@@ -97,7 +97,8 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     	struct patmatch match; 
 	// create a instance of the patmatch struct to store the current match in
 
-	match.location = i; 
+	match.location = (unsigned int) i;
+     
 	// set the location of the match to the current address
 
 	// I've started by assuming that the memory is RO
@@ -130,17 +131,17 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	//i += v;
 	// need to move on past the located pattern
 	
-	printf("Found a match.\n");
-	printf("returned location = %lli\n", i);
+	//	printf("Found a match.\n");
+	//printf("returned location = %lli\n", i);
 
-	sleep(45);
+	//	sleep(45);
 
       }
    
     }
   
   return(count);
-
+  
 }
 
 void sig_segv_handler(int sig) 
@@ -172,8 +173,11 @@ int main() {
   unsigned int patlength = 13;
   struct patmatch locations[5];
   unsigned int loclength = 5;
+  unsigned int p;
+  int i;
 
-  findpattern(pattern, patlength, locations, loclength);
+  p = findpattern(pattern, patlength, locations, loclength);
+
 
   return 0;
 

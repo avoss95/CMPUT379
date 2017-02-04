@@ -5,6 +5,8 @@
 #include <math.h>    
 #include <unistd.h>
 #include <signal.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #define MEM_RW 0
 #define MEM_RO 1
@@ -22,12 +24,11 @@ jmp_buf env;
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
   int j, pagesize, count = 0;
-  double i, max = pow(2,32);
+  long i, max = pow(2,32);
+  //uint32_t i;
   int num_increments = 0;
-  char *  temp;
+  char * temp;
   int v;
-
-  long double temp2 = 1000000;
 
   // might need to initialize the *locations array to 0 using the loclength
 
@@ -39,21 +40,27 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     locations[j].mode = MEM_RO;
     // with this now done, we can safely modify the array *locations by inserting structs into the correct locations
 
-   }
+  }
 
-  for (i=0; i<max; i+=100024) {
-
+  for (i=0; i<max; i++) {
+    
+    if (i<0)
+      {
+ 	break;
+      }
+    
+  // i = 0;
+  // do {
+    
+     
     j = sigsetjmp(env, 1);
     
-    //    printf("j = %d\n", j);
     // put setjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
     if (j == 1) {
 
       pagesize = getpagesize(); 
       
-      //printf("pagesize = %d\n", pagesize);
-
       //grab the page size and increment i by that amount so we can skip the unreadable memory
       i += pagesize;
 
@@ -61,14 +68,11 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     
     
     
-    //printf("%n\n");
-    printf("i =   %lf\n", i);
-    //printf("max = %Lf\n", max);
-    // sleep(1);
-    
+    printf("i = %li\n", i);
 
     temp = (char *) i;
-
+    // I can't do this because a double can't be turned into a char *; however, an int can
+    // but an int is only 16 bits and I need a double, which is 32 bits
 
     v = 0;
 
@@ -77,10 +81,11 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     while (*(temp+v) == pattern[v])
       // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *i and *pattern match (the specific byte we're looking at)
       {
-	//	printf("Made it into the while loop\n");
+
     	v += 1;
-	//*pattern += 1; this is redundant since we're incrementing v anyways
+
 	num_increments += 1;
+
       } 
       
 
@@ -119,32 +124,28 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	//match.mode = MEM_RW; 
 	// I forget how to determine if the memory is RW or RO, so until I figure that out this placeholder will be here
-      //	i += v;
+	//	i += v;
 
 	// need to move on past the located pattern
+	
+	//	printf("Found a match.\n");
 
-    //	printf("Found a match.\n");
-
-    //	sleep(5);
       }
-
+   
   }
-
+  
   return(count);
-  //printf("end of loop\n");
-  //return(1);
+
 }
 
 void sig_segv_handler(int sig) 
 {
   //printf("This is the signal handler for SIGSEGV\n");
   
-  //  (void) signal(SIGSEGV, SIG_IGN);
-
   // a segfault only happens when we're trying to read from memory that can't be read
   
   siglongjmp(env, 1);   
-  //I think this is the right spot for longjmp()- the error has been handled, so we want to go back 
+  // longjmp() back to right before the error occurred
 
  }
 
@@ -152,8 +153,6 @@ void sig_segv_handler(int sig)
 
 
 int main() {
-
-  //  (void) signal(SIGSEGV, sig_segv_handler);
 
   struct sigaction act;
   act.sa_handler = sig_segv_handler;
@@ -170,13 +169,6 @@ int main() {
   unsigned int loclength = 5;
 
   findpattern(pattern, patlength, locations, loclength);
-
-  // double i, max = pow(2,32);
-  //printf("max = %Lf\n", max);
-
-  //for (i=0; i<max; i+=1024) {
-  // printf("i = %lf\n", i);
-  //}
 
   return 0;
 

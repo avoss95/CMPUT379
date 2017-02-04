@@ -24,7 +24,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
   
   int j, pagesize, count = 0;
   long long i, cap = 4294967296;
-  int num_increments = 0;
+  unsigned int num_increments;
   char * temp;
   int v;
 
@@ -40,18 +40,15 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
   }
 
   for (i=0; i<cap; i+=1) 
-    {
-    
-  // i = 0;
-  // do {
-    
+    { 
      
     j = sigsetjmp(env, 1);
-    
-
-    /*if (i<0)
-    	break;
-	}*/
+   
+    if (i>=cap)
+	{
+	  break;
+	}
+    // for reasons beyond my comprehension, end conditions for for and while loops cease to work so I need to hardcode them in
 
     // put sigsetjmp() here so that if we try to read unaccessible memory, it jumps back to here
 
@@ -74,17 +71,19 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     // but an int is only 16 bits and I need a double, which is 32 bits
 
     v = 0;
+    num_increments = 0;
 
     while (*(temp+v) == pattern[v])
-      // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *i and *pattern match (the specific byte we're looking at)
+      // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *temp and *pattern match (the specific byte we're looking at)
       {
-
-	printf("pattern[v] = %c\n", pattern[v]);
-	printf("temp = %c\n", *(temp+v));
-
     	v += 1;
 
 	num_increments += 1;
+
+	if (num_increments >= patlength) 
+	  {
+	    break;
+	  }
 
       } 
       
@@ -92,9 +91,6 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     if (num_increments == patlength)
       // hyopthetically, this should ensure that we found a match exactly equal to the pattern (not shorter or longer)
       {
-
-	printf("num_increments = %i\n", num_increments);
-	sleep(2);
 
 	//	printf("v = %i\n", v);
 
@@ -135,8 +131,9 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	// need to move on past the located pattern
 	
 	printf("Found a match.\n");
+	printf("returned location = %lli\n", i);
 
-	sleep(2);
+	sleep(45);
 
       }
    
@@ -178,12 +175,6 @@ int main() {
 
   findpattern(pattern, patlength, locations, loclength);
 
-  /*long  long i, max = 4294967296;
-  for (i=0;i<max;i+=1024) 
-    {
-      printf("i = %lli\n", i);
-      } */
-  
   return 0;
 
 }

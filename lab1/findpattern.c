@@ -30,7 +30,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
   // might need to initialize the *locations array to 0 using the loclength
 
-  for (j=0; j<loclength; j++) {
+  for (j=0; j<=loclength; j++) {
 
     locations[j].location = 0;
     
@@ -43,6 +43,9 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     { 
      
     j = sigsetjmp(env, 1);
+    
+    // printf("j = %i\n", j);
+    //sleep(30);
    
     if (i>=cap)
 	{
@@ -72,21 +75,21 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
     v = 0;
     num_increments = 0;
-
+    
     while (*(temp+v) == pattern[v])
       // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *temp and *pattern match (the specific byte we're looking at)
       {
     	v += 1;
-
+	
 	num_increments += 1;
-
+	
 	if (num_increments >= patlength) 
 	  {
 	    break;
 	  }
-
+	
       } 
-      
+    
 
     if (num_increments == patlength)
       // hyopthetically, this should ensure that we found a match exactly equal to the pattern (not shorter or longer)
@@ -100,26 +103,25 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	match.location = (unsigned int) i;
      
 	// set the location of the match to the current address
-
+	
 	// I've started by assuming that the memory is RO
 	// try to write- if it succeeds, change to RW
 	// otherwise, leave it as is
 
-	//	j = sigsetjmp(env, 1);
-	// so if we get a segfault, it will jump back here 
+	j = sigsetjmp(env, 1);
 
-	// crap- if I do the write here, and it segfaults, we get stuck in an infinite loop....
-
-	if (j == 1) 
+	if (j==0)
 	  {
+	    
+	    int val;
+	    char * write_test = (char *) i;
+	    *write_test = i;
+	    // write succeeded
 
-	  // if j == 1, then a segfault happened
-	  // segfault means memory is RO, otherwise it is RW
+	    match.mode = MEM_RW;
 
-	  
 	  }
-
-	//match.mode = MEM_RW; 
+	
 
 
 	locations[count] = match;  
@@ -127,14 +129,6 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	count += 1; 
 	// can only increment after adding the match to the list since otherwise we would be off by one
-
-	//i += v;
-	// need to move on past the located pattern
-	
-	//	printf("Found a match.\n");
-	//printf("returned location = %lli\n", i);
-
-	//	sleep(45);
 
       }
    
@@ -146,7 +140,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 void sig_segv_handler(int sig) 
 {
-  //printf("This is the signal handler for SIGSEGV\n");
+  // printf("This is the signal handler for SIGSEGV\n");
   
   // a segfault only happens when we're trying to read from memory that can't be read
   
@@ -166,19 +160,17 @@ int main() {
   act.sa_flags = 0;
   sigaction(SIGSEGV, &act, 0);
 
-  // call findpattern() at some point, with all the required arguments
-  // pretty sure that's all main() will do- call findpattern().... I think
-
   char pattern[] = "abcdefgfcdeba";
   unsigned int patlength = 13;
   struct patmatch locations[5];
   unsigned int loclength = 5;
   unsigned int p;
   int i;
-
+  
   p = findpattern(pattern, patlength, locations, loclength);
-
-
+  
+  printf("count = %i\n", p);
+  
   return 0;
 
 }

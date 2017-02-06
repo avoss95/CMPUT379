@@ -1,11 +1,9 @@
 #include "findpattern.h"
 
-
-
 unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct patmatch *locations, unsigned int loclength) {
   
   int j, pagesize, count = 0;
-  long long i, cap = 4294967296;
+  long long i, cap = 4294967296; // = 2^32
   unsigned int num_increments;
   char * temp;
   int v;
@@ -26,9 +24,6 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
      
     j = sigsetjmp(env, 1);
     
-    // printf("j = %i\n", j);
-    //sleep(30);
-   
     if (i>=cap)
 	{
 	  break;
@@ -46,15 +41,12 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
       i += pagesize;
 
       }
-    
-    
-    
-    //printf("i = %lli\n", i);
+
+    printf("i = %lli\n", i);
 
     temp = (char *) i;
-    // I can't do this because a double can't be turned into a char *; however, an int can
-    // but an int is only 16 bits and I need a double, which is 32 bits
-
+    // we want to keep the original value of i since that would be the starting location
+    
     v = 0;
     num_increments = 0;
     
@@ -67,6 +59,9 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	
 	if (num_increments >= patlength) 
 	  {
+	    printf("num_increments = %i\n", num_increments);
+	    printf("pattern[v] = %c\n", pattern[v]);
+	    printf("v = %i\n", v);
 	    break;
 	  }
 	
@@ -75,9 +70,8 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
     if (num_increments == patlength)
       // hyopthetically, this should ensure that we found a match exactly equal to the pattern (not shorter or longer)
+      // since findpattern() might find the first portion of the pattern, but not all of it
       {
-
-	//	printf("v = %i\n", v);
 
     	struct patmatch match; 
 	// create a instance of the patmatch struct to store the current match in
@@ -91,6 +85,8 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	// otherwise, leave it as is
 
 	j = sigsetjmp(env, 1);
+	// if an error occurs when attempting to write to memory, then the memory is RO and the mode shouldn't change (since we initialized it to RO)
+	// we want to change the mode ONLY if the write succeeds (that is, j is equal to 0. It is equal to 1 only when an error is rasied)
 
 	if (j==0)
 	  {
@@ -104,10 +100,14 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
 	  }
 	
+	if (count <= loclength)
+	  // if loclength is less than the number of locations where the pattern was found, then the locations array contains the first loclength entries
+	  {
 
+	    locations[count] = match;  
+	    // put the match in the appropriate spot in the locations array
 
-	locations[count] = match;  
-	// I think ? this is (assuming this is the first match found) putting the match in the first spot in the locations array
+	  }
 
 	count += 1; 
 	// can only increment after adding the match to the list since otherwise we would be off by one
@@ -117,14 +117,12 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     }
   
   return(count);
-  
+  // this is what gets returned regardless of what happens
 }
 
 void sig_segv_handler(int sig) 
 {
-  // printf("This is the signal handler for SIGSEGV\n");
-  
-  // a segfault only happens when we're trying to read from memory that can't be read
+  // a segfault only happens when we're trying to read from memory that can't be read/write to RO memory
   
   siglongjmp(env, 1);   
   // longjmp() back to right before the error occurred
@@ -136,22 +134,28 @@ void sig_segv_handler(int sig)
 
 int main() {
 
-  struct sigaction act;
-  act.sa_handler = sig_segv_handler;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = 0;
-  sigaction(SIGSEGV, &act, 0);
+  struct sigaction my_handler, old_handler;
+  my_handler.sa_handler = sig_segv_handler;
+  sigemptyset(&my_handler.sa_mask);
+  my_handler.sa_flags = 0;
+  sigaction(SIGSEGV, &my_handler, 0);
 
-  char pattern[] = "abcdefgfcdeba";
-  unsigned int patlength = 13;
-  struct patmatch locations[5];
-  unsigned int loclength = 5;
+  char pattern[] = "a";
+  unsigned int patlength = 1;
+  struct patmatch locations[50];
+  unsigned int loclength = 50;
   unsigned int p;
   int i;
   
   p = findpattern(pattern, patlength, locations, loclength);
-  
-  printf("count = %i\n", p);
+
+  printf("count = %d\n", p);
+  for (i=0;i<=loclength;i++)
+    {
+      printf("memory type = %i\n", locations[i].mode);
+    }
+
+  //  sigaction(SIGSEGV, &old_handler, NULL);
   
   return 0;
 

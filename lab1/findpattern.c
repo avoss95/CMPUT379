@@ -42,8 +42,6 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 
       }
 
-    printf("i = %lli\n", i);
-
     temp = (char *) i;
     // we want to keep the original value of i since that would be the starting location
     
@@ -59,9 +57,6 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	
 	if (num_increments >= patlength) 
 	  {
-	    printf("num_increments = %i\n", num_increments);
-	    printf("pattern[v] = %c\n", pattern[v]);
-	    printf("v = %i\n", v);
 	    break;
 	  }
 	
@@ -135,10 +130,11 @@ void sig_segv_handler(int sig)
 int main() {
 
   struct sigaction my_handler, old_handler;
+  memset(&my_handler, 0, sizeof(my_handler));
   my_handler.sa_handler = sig_segv_handler;
   sigemptyset(&my_handler.sa_mask);
   my_handler.sa_flags = 0;
-  sigaction(SIGSEGV, &my_handler, 0);
+  sigaction(SIGSEGV, &my_handler, &old_handler);
 
   char pattern[] = "a";
   unsigned int patlength = 1;
@@ -149,13 +145,7 @@ int main() {
   
   p = findpattern(pattern, patlength, locations, loclength);
 
-  printf("count = %d\n", p);
-  for (i=0;i<=loclength;i++)
-    {
-      printf("memory type = %i\n", locations[i].mode);
-    }
-
-  //  sigaction(SIGSEGV, &old_handler, NULL);
+  sigaction(SIGSEGV, &old_handler, NULL);
   
   return 0;
 

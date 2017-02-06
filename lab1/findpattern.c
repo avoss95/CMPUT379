@@ -131,11 +131,11 @@ void sig_segv_handler(int sig)
 int main() {
 
   struct sigaction my_handler, old_handler;
-  //memset(&my_handler, 0, sizeof(my_handler));
+  memset(&my_handler, 0, sizeof(my_handler));
   my_handler.sa_handler = sig_segv_handler;
   sigemptyset(&my_handler.sa_mask);
   my_handler.sa_flags = 0;
-  sigaction(SIGSEGV, &my_handler, 0);
+  sigaction(SIGSEGV, &my_handler, &old_handler);
 
   char pattern[] = "a";
   unsigned int patlength = 1;
@@ -152,7 +152,7 @@ int main() {
       printf("address = %p\n", locations[i].location);
       }*/
 
-  // sigaction(SIGSEGV, &old_handler, NULL);
+  sigaction(SIGSEGV, &old_handler, NULL);
   
   return 0;
 

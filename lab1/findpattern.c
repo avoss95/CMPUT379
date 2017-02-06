@@ -51,6 +51,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
     while (*(temp+v) == pattern[v])
       // assuming I know what I'm doing, this should simply go through and increment num_increments every time the *temp and *pattern match (the specific byte we're looking at)
       {
+	
     	v += 1;
 	
 	num_increments += 1;
@@ -72,7 +73,7 @@ unsigned int findpattern(unsigned char *pattern, unsigned int patlength, struct 
 	// create a instance of the patmatch struct to store the current match in
 
 	match.location = (unsigned int) i;
-     
+	printf("location = %p\n", match.location);
 	// set the location of the match to the current address
 	
 	// I've started by assuming that the memory is RO
@@ -130,11 +131,11 @@ void sig_segv_handler(int sig)
 int main() {
 
   struct sigaction my_handler, old_handler;
-  memset(&my_handler, 0, sizeof(my_handler));
+  //memset(&my_handler, 0, sizeof(my_handler));
   my_handler.sa_handler = sig_segv_handler;
   sigemptyset(&my_handler.sa_mask);
   my_handler.sa_flags = 0;
-  sigaction(SIGSEGV, &my_handler, &old_handler);
+  sigaction(SIGSEGV, &my_handler, 0);
 
   char pattern[] = "a";
   unsigned int patlength = 1;
@@ -144,9 +145,16 @@ int main() {
   int i;
   
   p = findpattern(pattern, patlength, locations, loclength);
+  // printf("p = %i\n", p);
+  
+  /* for (i=0;i<=loclength;i++)
+    {
+      printf("address = %p\n", locations[i].location);
+      }*/
 
-  sigaction(SIGSEGV, &old_handler, NULL);
+  // sigaction(SIGSEGV, &old_handler, NULL);
   
   return 0;
 
 }
+

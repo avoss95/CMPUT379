@@ -10,6 +10,7 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <math.h>
+#include <inttypes.h>
 
 #define	 MY_PORT  2222
 
@@ -46,24 +47,17 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext)
 
   strcpy(ciphertext, base64_decoded);
 
-  printf("message after base64 decoding = %s\n", ciphertext);
+  //printf("message after base64 decoding = %s\n", ciphertext);
 
   EVP_CIPHER_CTX_init(&ctx);
   EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
 
-  // if the string is more than 16 bytes, we can decrypt the whole thing
   ciphertext_len = strlen(ciphertext);
   printf("string_length after base64 decoding = %lf\n", ciphertext_len);
   
-  k = round(ciphertext_len/16);
-  //printf("k = %lf\n", k);
-  for (j=0;j<=k;j++)
-    {
-      if(!EVP_EncryptUpdate(&ctx, plaintext, &len, ciphertext, ciphertext_len)) {
-	return 0;
-      }
-
-    }
+  if(!EVP_DecryptUpdate(&ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+    return 0;
+  }
 
 
   if(!EVP_DecryptFinal_ex(&ctx, plaintext + len, &tmplen)) {
@@ -101,11 +95,11 @@ char *base64encode (const void *b64_encode_this, int encode_this_many_bytes){
 }
 
 
-int do_crypt(unsigned char * message) {
+int encrypt(unsigned char * message) {
   int outlen, tmplen, i;
   unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
   unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  char intext[] = "some Crypto Text test blah"; 
+  char intext[] = "some Crypto Text test blah yadda yadda random really really"; 
   EVP_CIPHER_CTX ctx;
   FILE *out;
   float string_length, j, k;
@@ -115,19 +109,14 @@ int do_crypt(unsigned char * message) {
 
 
   printf("original plaintext message = %s\n", intext);
-  // if the string is more than 16 bytes, we can encrypt the whole thing
+ 
   string_length = strlen(intext);
   printf("original string_length = %lf\n", string_length);
   
-  k = round(string_length/16);
-  //  printf("k = %lf\n", k);
-  for (j=0;j<=k;j++)
-    {
-      if(!EVP_EncryptUpdate(&ctx, message, &outlen, intext, strlen(intext))) {
-	return 0;
-      }
 
-    }
+  if(!EVP_EncryptUpdate(&ctx, message, &outlen, intext, strlen(intext))) {
+    return 0;
+  }
 
   
   if(!EVP_EncryptFinal_ex(&ctx, message + outlen, &tmplen)) {
@@ -151,8 +140,10 @@ int do_crypt(unsigned char * message) {
 
 
 
-int main()
+int main(int argc, char * argv[])
 {
+  // argv[1] = hostname, argv[2] = portnumber, argv[3] (if it exists) = keyfile
+  
   int i, s, number, n;
 
   unsigned char greeting[1024], message[1024], plaintext[1024];
@@ -166,9 +157,7 @@ int main()
   if (host == NULL) {
     perror ("Client: cannot get host description");
     exit (1);
-  }
-  
-  
+  } 
   
   s = socket (AF_INET, SOCK_STREAM, 0);
   
@@ -180,8 +169,8 @@ int main()
   bzero (&server, sizeof (server));
   bcopy (host->h_addr, & (server.sin_addr), host->h_length);
   server.sin_family = AF_INET;//= host->h_addrtype;
-  server.sin_addr.s_addr = inet_addr("129.128.29.43"); //run server on ug13
-  server.sin_port = htons (MY_PORT);
+  server.sin_addr.s_addr = inet_addr(argv[1]); //run server on ug13, 129.128.29.43
+  server.sin_port = htons (atoi(argv[2]));
   
   if (connect (s, (struct sockaddr*) & server, sizeof (server))) {
     perror ("Client: cannot connect to server");
@@ -191,8 +180,49 @@ int main()
   recv(s, greeting, sizeof(greeting), 0);
   printf("%s", greeting);
   
+  int user_option;
+
+  while(1) 
+    {
+      printf("What would you like to do?\n");
+      printf("1 - Send query\n");
+      printf("2 - Update a whiteboard entry without encryption\n");
+      printf("3 - Update a whiteboard entry with encryption\n");
+      printf("4 - Clean an entry\n");
+      printf("5 - Exit\n");
+
+      scanf("%i", &user_option);
+      
+      if (user_option == 1)
+	{
+	  break;
+	}
+
+      if (user_option == 2)
+	{
+	  break;
+	}
+
+      if (user_option == 3)
+	{
+	  break;
+	}
+
+      if (user_option == 4)
+	{
+	  break;
+	}
+      
+      if (user_option == 5)
+	{
+	  break;
+	}
+
+    }
   
-  do_crypt(message);
+
+  
+  encrypt(message);
   printf("encrypted, encoded message = %s\n", message);
   n = send(s, message, sizeof(message), 0);
  
@@ -200,6 +230,9 @@ int main()
   printf("message received back from server = %s\n", message);
   
   decrypt(message, plaintext);
+  int j = strlen(plaintext);
+  int k = plaintext[j-1];
+  printf("last char = %i\n", k);
   printf("decrypted message = %s\n", plaintext);
 
   /* printf("decrypted message = ");
@@ -220,59 +253,4 @@ int main()
   //free(base64_decoded);
 }
  
- 
-
-
-
-/*decrypt(unsigned char * ciphertext, unsigned char * plaintext) {
-  int outlen, tmplen, i;
-  unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  //  unsigned char * plaintext;
-  EVP_CIPHER_CTX ctx;
-  FILE *out;
-  int string_length, k, j;
-
-  int bytes_to_decode = strlen(ciphertext); //Number of bytes in string to base64 encode.
-
-  char *base64_decoded = base64decode(ciphertext, bytes_to_decode);   //Base-64 encoding.
-  
-
-  EVP_CIPHER_CTX_init(&ctx); //might still need this line?!?
-
-  EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-
-
-
-  // if the string is more than 16 bytes, we can encrypt the whole thing
-  string_length = strlen(ciphertext);
-  if ( (string_length / 16) == 1) 
-    {
-b  
-      if(!EVP_DecryptUpdate(&ctx, plaintext, &outlen, ciphertext, strlen(ciphertext))) {
-	return 0;
-      }
-    }
-  else
-    {
-      // ceiling division CHECK MATH
-      k = (string_length + 15)/16;
-      for (j=0;j<=k;j++)
-	{
-	  if(!EVP_DecryptUpdate(&ctx, plaintext, &outlen, ciphertext, strlen(ciphertext))) {
-	return 0;
-	  }
-	}
-    }
-
-
-  if(!EVP_DecryptFinal_ex(&ctx, plaintext + outlen, &outlen)) {
-    return 0;
-  }
-
-  outlen += tmplen;
-  EVP_CIPHER_CTX_cleanup(&ctx);
-  
-  return 1;
-}*/ 
 

@@ -40,18 +40,17 @@ int main()
   
   listen (sock, 5);
   
- 
-  fromlength = sizeof (from);
-  snew = accept (sock, (struct sockaddr*) & from, & fromlength);
-  if (snew < 0) {
-    perror ("Server: accept failed");
-    exit (1);
-  }
-  
-  strcpy(tempmessage, "CMPUT379 Whiteboard Server v0\n");
-  send(snew, tempmessage, sizeof(tempmessage), 0);
-  
-  
+  while(1) {
+    fromlength = sizeof (from);
+    snew = accept (sock, (struct sockaddr*) & from, & fromlength);
+    if (snew < 0) {
+      perror ("Server: accept failed");
+      exit (1);
+    }
+    
+    strcpy(tempmessage, "CMPUT379 Whiteboard Server v0\n");
+    send(snew, tempmessage, sizeof(tempmessage), 0);
+    
   
   //outnum = htonl (number);
   //write (snew, &outnum, sizeof (outnum));
@@ -61,11 +60,12 @@ int main()
   
   send(snew, message, sizeof(message), 0);
   //  send(sock, message, sizeof(message), 0);
+
   
   close (snew);
   //number++;
   
-  
+  }
 
 }
 

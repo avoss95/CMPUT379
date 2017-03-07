@@ -11,142 +11,35 @@
 #include <openssl/pem.h>
 #include <math.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <assert.h>
 
 #define	 MY_PORT  2222
 
-
-char *base64decode (const void *b64_decode_this, int decode_this_many_bytes){
-  BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
-  char *base64_decoded = calloc( (decode_this_many_bytes*3)/4+1, sizeof(char) ); //+1 = null.
-  b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
-  mem_bio = BIO_new(BIO_s_mem());                         //Initialize our memory source BIO.
-  BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes); //Base64 data saved in source.
-  BIO_push(b64_bio, mem_bio);          //Link the BIOs by creating a filter-source BIO chain.
-  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);          //Don't require trailing newlines.
-  int decoded_byte_index = 0;   //Index where the next base64_decoded byte should be written.
-  while ( 0 < BIO_read(b64_bio, base64_decoded+decoded_byte_index, 1) ){ //Read byte-by-byte.
-    decoded_byte_index++; //Increment the index until read of BIO decoded data is complete.
-  } //Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
-  BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
-  return base64_decoded;        //Returns base-64 decoded data with trailing null terminator.
-}
- 
- 
-int decrypt(unsigned char *ciphertext, unsigned char *plaintext)
-{
-  EVP_CIPHER_CTX ctx;
-  unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  int len, tmplen;
-  int plaintext_len;
-  float j, k, ciphertext_len;
-
-  int bytes_to_decode = strlen(ciphertext); //Number of bytes in string to base64 decode.
-   
-  char *base64_decoded = base64decode(ciphertext, bytes_to_decode);   //Base-64 decoding.
-
-  strcpy(ciphertext, base64_decoded);
-
-  //printf("message after base64 decoding = %s\n", ciphertext);
-
-  EVP_CIPHER_CTX_init(&ctx);
-  EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-
-  ciphertext_len = strlen(ciphertext);
-  printf("string_length after base64 decoding = %lf\n", ciphertext_len);
-  
-  if(!EVP_DecryptUpdate(&ctx, plaintext, &len, ciphertext, ciphertext_len)) {
-    return 0;
-  }
-
-
-  if(!EVP_DecryptFinal_ex(&ctx, plaintext + len, &tmplen)) {
-    return 0;
-  }
-
-
-  len += tmplen;
-  EVP_CIPHER_CTX_cleanup(&ctx);
-
-
-  return 1;
-  
-
-} 
-
-
-
-
-char *base64encode (const void *b64_encode_this, int encode_this_many_bytes){
-  BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
-  BUF_MEM *mem_bio_mem_ptr;    //Pointer to a "memory BIO" structure holding our base64 data.
-  b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
-  mem_bio = BIO_new(BIO_s_mem());                           //Initialize our memory sink BIO.
-  BIO_push(b64_bio, mem_bio);            //Link the BIOs by creating a filter-sink BIO chain.
-  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);  //No newlines every 64 characters or less.
-  BIO_write(b64_bio, b64_encode_this, encode_this_many_bytes); //Records base64 encoded data.
-  BIO_flush(b64_bio);   //Flush data.  Necessary for b64 encoding, because of pad characters.
-  BIO_get_mem_ptr(mem_bio, &mem_bio_mem_ptr);  //Store address of mem_bio's memory structure.
-  BIO_set_close(mem_bio, BIO_NOCLOSE);   //Permit access to mem_ptr after BIOs are destroyed.
-  BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
-  BUF_MEM_grow(mem_bio_mem_ptr, (*mem_bio_mem_ptr).length + 1);   //Makes space for end null.
-  (*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';  //Adds null-terminator to tail.
-  return (*mem_bio_mem_ptr).data; //Returns base-64 encoded data. (See: "buf_mem_st" struct).
-}
-
-
-int encrypt(unsigned char * message) {
-  int outlen, tmplen, i;
-  unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  char intext[] = "some Crypto Text test blah yadda yadda random really really"; 
-  EVP_CIPHER_CTX ctx;
-  FILE *out;
-  float string_length, j, k;
-
-  EVP_CIPHER_CTX_init(&ctx);
-  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-
-
-  printf("original plaintext message = %s\n", intext);
- 
-  string_length = strlen(intext);
-  printf("original string_length = %lf\n", string_length);
-  
-
-  if(!EVP_EncryptUpdate(&ctx, message, &outlen, intext, strlen(intext))) {
-    return 0;
-  }
-
-  
-  if(!EVP_EncryptFinal_ex(&ctx, message + outlen, &tmplen)) {
-    return 0;
-  }
-
-  outlen += tmplen;
-  EVP_CIPHER_CTX_cleanup(&ctx);
-  for  (i=0; i<=outlen-1; i++){
-    //printf("%c", outbuf[i]);
-  }
-
-  int bytes_to_encode = strlen(message); //Number of bytes in string to base64 encode.
-
-  char *base64_encoded = base64encode(message, bytes_to_encode);   //Base-64 encoding.
-
-  strcpy(message, base64_encoded);
-
-  return 1;
-}
-
-
+void send_query();
+char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
+int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile);
+char *base64encode (const void *b64_encode_this, int encode_this_many_bytes);
+int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile);
 
 int main(int argc, char * argv[])
 {
   // argv[1] = hostname, argv[2] = portnumber, argv[3] (if it exists) = keyfile
+
+  FILE * keyfile;
+  
+  if (argc = 4)
+    {
+     keyfile = fopen(argv[3], "r+");
+    }
+  else
+    {
+      keyfile = NULL;
+    }
   
   int i, s, number, n;
 
-  unsigned char greeting[1024], message[1024], plaintext[1024];
+  unsigned char greeting[10000], message[10000], plaintext[10000];
 
   struct sockaddr_in server;
   
@@ -179,7 +72,10 @@ int main(int argc, char * argv[])
   
   recv(s, greeting, sizeof(greeting), 0);
   printf("%s", greeting);
+
+  send_query(s, keyfile); //the keyfile is for testing purposes- i will not be using a keyfile for queries, just for encryption/decryption
   
+  /*
   int user_option;
 
   while(1) 
@@ -195,62 +91,284 @@ int main(int argc, char * argv[])
       
       if (user_option == 1)
 	{
-	  break;
+	  send_query(s);
 	}
 
       if (user_option == 2)
 	{
-	  break;
+	  break; //plaintext_entry();
 	}
 
-      if (user_option == 3)
+      if (user_option == 3) 
 	{
-	  break;
+	  break; //encrypted_entry()'
 	}
 
       if (user_option == 4)
 	{
-	  break;
+	  break; //clean_entry();
 	}
       
       if (user_option == 5)
 	{
-	  break;
+	  break; //quit();
 	}
 
-    }
+      else
+	{
+	  printf("Please enter in one of the above options\n");
+	}
+
+	} */
+
+}
   
+void send_query(int s, FILE * keyfile)
+{
+  
+  /*printf("Please enter your query in the following format: ?##\\n, where ## is the number of the entry you wish to query\n");
+
+  char response[10000];
+
+  char * query;
+
+  query = malloc(sizeof(query));
+
+  printf("sizeof(query) = %sbc\n", query);
+
+  fgets(query, sizeof(query), stdin);
+  
+  printf("%s\n", query);
+  
+  send(s, query, sizeof(query), 0);
+
+  recv(s, response, sizeof(response), 0);*/
+
+  // printf("%s\n", response); 
 
   
-  encrypt(message);
-  printf("encrypted, encoded message = %s\n", message);
-  n = send(s, message, sizeof(message), 0);
- 
-  recv(s, message, sizeof(message), 0);
-  printf("message received back from server = %s\n", message);
+  char message[] = "CMPUT379some Crypto Text test blah yadda yadda random really wowehie";
+  char plaintext[10000], outtext[10000], server_message[10000];
+
+  encrypt(message, outtext, keyfile);
+  printf("encrypted, encoded message = %s\n", outtext);
+  send(s, outtext, sizeof(outtext), 0);
+
+  recv(s, server_message, sizeof(server_message), 0);
+  printf("message received back from server = %s\n", server_message);
   
-  decrypt(message, plaintext);
-  int j = strlen(plaintext);
-  int k = plaintext[j-1];
-  printf("last char = %i\n", k);
+  decrypt(server_message, plaintext, keyfile);
+  rewind(keyfile);
+
   printf("decrypted message = %s\n", plaintext);
 
-  /* printf("decrypted message = ");
-     for (i=0;i<20;i++) {
-     printf("%c", message[i]);
-     }
-     printf("\n"); */
   
   //read (s, &number, sizeof (number));
   close (s);
   //fprintf (stderr, "Process %d gets number %d\n", getpid (),
   //	     ntohl (number));
   sleep (2);
- 
   
   
   //free(base64_encoded);
   //free(base64_decoded);
 }
  
+char *base64decode (const void *b64_decode_this, int decode_this_many_bytes){
+  BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
+  char *base64_decoded = calloc( (decode_this_many_bytes*3)/4+1, sizeof(char) ); //+1 = null.
+  b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
+  mem_bio = BIO_new(BIO_s_mem());                         //Initialize our memory source BIO.
+  BIO_write(mem_bio, b64_decode_this, decode_this_many_bytes); //Base64 data saved in source.
+  BIO_push(b64_bio, mem_bio);          //Link the BIOs by creating a filter-source BIO chain.
+  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);          //Don't require trailing newlines.
+  int decoded_byte_index = 0;   //Index where the next base64_decoded byte should be written.
+  while ( 0 < BIO_read(b64_bio, base64_decoded+decoded_byte_index, 1) ){ //Read byte-by-byte.
+    decoded_byte_index++; //Increment the index until read of BIO decoded data is complete.
+  } //Once we're done reading decoded data, BIO_read returns -1 even though there's no error.
+  BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
+  return base64_decoded;        //Returns base-64 decoded data with trailing null terminator.
+}
+ 
+ 
+int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
+{
+  EVP_CIPHER_CTX ctx;
+  //  unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  unsigned char key[32];
+  unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  int len, tmplen;
+  int plaintext_len;
+  float j, k, ciphertext_len;
 
+  
+  //printf("message after base64 decoding = %s\n", ciphertext);
+
+  EVP_CIPHER_CTX_init(&ctx);
+
+  // need a loop here to go through all keys in keyfile
+  // successful decrypt should have the first word as "CMPUT379"
+  // failed decrypt ran out of keys/error
+
+  bool successful_decrypt = false;
+
+  if (keyfile != NULL)
+  {
+
+    int bytes_to_decode = strlen(ciphertext); //Number of bytes in string to base64 decode.
+	
+    char *base64_decoded = base64decode(ciphertext, bytes_to_decode);   //Base-64 decoding.
+    
+    strcpy(ciphertext, base64_decoded);
+  
+    while ((fgets(key, 33, keyfile) != NULL))
+      {
+	
+	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	
+	
+	ciphertext_len = strlen(ciphertext);
+	printf("string_length after base64 decoding = %lf\n", ciphertext_len);
+	
+
+	if(!EVP_DecryptUpdate(&ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+	  return 0;
+	}
+	
+	if (strncmp(plaintext, "CMPUT379", 8) == 0)
+	  {
+	    successful_decrypt = true;
+	    printf("decrypt succeeded\n");
+	    break;
+	  }
+	
+      }
+    
+    if (successful_decrypt != true)
+      {
+	printf("decrypt failed, key not in possession\n");
+	return 0;
+      }
+
+    else
+      {
+	if(!EVP_DecryptFinal_ex(&ctx, plaintext + len, &tmplen)) {
+	  return 0;
+	}
+	
+	
+	len += tmplen;
+	
+	plaintext[len] = 0;
+	
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	
+	
+	return 1;
+      }	    
+    
+  }
+  
+  //NEED AN ELSE FOR NOT HAVING KEYFILE
+  else
+    {
+      printf("cannot decrypt without a keyfile\n");
+      
+      return 0;
+    }	    
+  
+} 
+  
+
+
+
+char *base64encode (const void *b64_encode_this, int encode_this_many_bytes){
+  BIO *b64_bio, *mem_bio;      //Declares two OpenSSL BIOs: a base64 filter and a memory BIO.
+  BUF_MEM *mem_bio_mem_ptr;    //Pointer to a "memory BIO" structure holding our base64 data.
+  b64_bio = BIO_new(BIO_f_base64());                      //Initialize our base64 filter BIO.
+  mem_bio = BIO_new(BIO_s_mem());                           //Initialize our memory sink BIO.
+  BIO_push(b64_bio, mem_bio);            //Link the BIOs by creating a filter-sink BIO chain.
+  BIO_set_flags(b64_bio, BIO_FLAGS_BASE64_NO_NL);  //No newlines every 64 characters or less.
+  BIO_write(b64_bio, b64_encode_this, encode_this_many_bytes); //Records base64 encoded data.
+  BIO_flush(b64_bio);   //Flush data.  Necessary for b64 encoding, because of pad characters.
+  BIO_get_mem_ptr(mem_bio, &mem_bio_mem_ptr);  //Store address of mem_bio's memory structure.
+  BIO_set_close(mem_bio, BIO_NOCLOSE);   //Permit access to mem_ptr after BIOs are destroyed.
+  BIO_free_all(b64_bio);  //Destroys all BIOs in chain, starting with b64 (i.e. the 1st one).
+  BUF_MEM_grow(mem_bio_mem_ptr, (*mem_bio_mem_ptr).length + 1);   //Makes space for end null.
+  (*mem_bio_mem_ptr).data[(*mem_bio_mem_ptr).length] = '\0';  //Adds null-terminator to tail.
+  return (*mem_bio_mem_ptr).data; //Returns base-64 encoded data. (See: "buf_mem_st" struct).
+}
+
+
+int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
+  int outlen, tmplen, i;
+  //unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  unsigned char key[32];
+  unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  //  char intext[] = "some Crypto Text test blah yadda yadda random really really ruownowrni uwrnwirowni owurowurwior 7579"; 
+  EVP_CIPHER_CTX ctx;
+  FILE *out;
+  float string_length, j, k;
+
+  EVP_CIPHER_CTX_init(&ctx);
+
+  
+  if (keyfile != NULL)
+    {
+  
+      // grab the first key from the keyfile.... I think
+      if (fgets(key, 33, keyfile) != NULL)
+	{
+
+	  printf("key = %s\n", key);
+	  //printf("key length = %li\n", sizeof(key));
+	  
+
+	  // I need to use this because I want to start from the top of the file after every use of fgets
+	  rewind(keyfile);
+
+
+	  // alright so at this point I know that the key is properly being read in from the file, and that the key is the proper length (32)
+	  
+
+	  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
+
+	  printf("original plaintext message = %s\n", intext);
+    
+	  string_length = strlen(intext);
+	  printf("original string_length = %lf\n", string_length);
+	  
+	  
+	  if(!EVP_EncryptUpdate(&ctx, outtext, &outlen, intext, strlen(intext))) {
+	    return 0;
+	  }
+	  
+	  if(!EVP_EncryptFinal_ex(&ctx, outtext + outlen, &tmplen)) {
+	    return 0;
+	  }
+	  
+
+	  outlen += tmplen;
+	  EVP_CIPHER_CTX_cleanup(&ctx);
+
+	  //    for  (i=0; i<=outlen-1; i++){
+	  //printf("%c", outbuf[i]);
+	  //}
+	  
+	  int bytes_to_encode = outlen; //Number of bytes in string to base64 encode.
+	  
+	  char *base64_encoded = base64encode(outtext, bytes_to_encode);   //Base-64 encoding.
+	  
+	  strcpy(outtext, base64_encoded);
+	  
+	  return 1;
+	}
+    }
+  
+  else 
+    {
+      printf("encryption not possible without a keyfile\n");
+      return 0;
+    }
+
+}

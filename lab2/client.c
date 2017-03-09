@@ -16,11 +16,14 @@
 
 #define	 MY_PORT  2222
 
-void send_query();
+void send_query(int s, FILE * keyfile);
 char *base64decode (const void *b64_decode_this, int decode_this_many_bytes);
 int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile);
 char *base64encode (const void *b64_encode_this, int encode_this_many_bytes);
 int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile);
+void plaintext_entry(int s);
+void encrypted_entry(int s, FILE * keyfile);
+void clean_entry(int s);
 
 int main(int argc, char * argv[])
 {
@@ -39,7 +42,7 @@ int main(int argc, char * argv[])
   
   int i, s, number, n;
 
-  unsigned char greeting[10000], message[10000], plaintext[10000];
+  unsigned char greeting[10000]; //, message[10000], plaintext[10000];
 
   struct sockaddr_in server;
   
@@ -73,10 +76,10 @@ int main(int argc, char * argv[])
   recv(s, greeting, sizeof(greeting), 0);
   printf("%s", greeting);
 
-  send_query(s, keyfile); //the keyfile is for testing purposes- i will not be using a keyfile for queries, just for encryption/decryption
+  //send_query(s, keyfile); //the keyfile is for testing purposes- i will not be using a keyfile for queries, just for encryption/decryption
   
-  /*
-  int user_option;
+  
+  char user_option[1000];
 
   while(1) 
     {
@@ -87,88 +90,101 @@ int main(int argc, char * argv[])
       printf("4 - Clean an entry\n");
       printf("5 - Exit\n");
 
-      scanf("%i", &user_option);
+      //scanf("%i", &user_option);
+
+      fgets(user_option, sizeof(user_option), stdin);
       
-      if (user_option == 1)
+      if (strncmp(user_option, "1", 1) == 0)
 	{
-	  send_query(s);
+	  send_query(s, keyfile);
 	}
 
-      if (user_option == 2)
+      if (strncmp(user_option, "2", 1) == 0)
 	{
-	  break; //plaintext_entry();
+	  plaintext_entry(s);
 	}
 
-      if (user_option == 3) 
+      if (strncmp(user_option, "3", 1) == 0)
 	{
-	  break; //encrypted_entry()'
+	  encrypted_entry(s, keyfile);
 	}
 
-      if (user_option == 4)
+      if (strncmp(user_option, "4", 1) == 0)
 	{
-	  break; //clean_entry();
+	  clean_entry(s);
 	}
       
-      if (user_option == 5)
+      if (strncmp(user_option, "5", 1) == 0)
 	{
-	  break; //quit();
+	  close(s);
+	  return 1;
 	}
-
-      else
+      
+      /*else
 	{
 	  printf("Please enter in one of the above options\n");
-	}
+	  }*/
 
-	} */
+    } 
 
 }
   
 void send_query(int s, FILE * keyfile)
 {
   
-  /*printf("Please enter your query in the following format: ?##\\n, where ## is the number of the entry you wish to query\n");
+  printf("Which entry of the whiteboard would you like to receive?\n");
 
-  char response[10000];
+  char response[10000], query[10000], char1[10], char2[10], message[10000], plaintext[10000], prepend[] = "?";
 
-  char * query;
-
-  query = malloc(sizeof(query));
-
-  printf("sizeof(query) = %sbc\n", query);
+  int entry_num, entry_len;
 
   fgets(query, sizeof(query), stdin);
-  
-  printf("%s\n", query);
-  
-  send(s, query, sizeof(query), 0);
 
-  recv(s, response, sizeof(response), 0);*/
+  strcat(prepend, query);
+  strcat(prepend, "\n");
 
-  // printf("%s\n", response); 
-
+  // printf("sent = %s\n", prepend);
   
+  send(s, prepend, sizeof(prepend), 0);
+
+  recv(s, response, sizeof(response), 0);
+
+  /*
   char message[] = "CMPUT379some Crypto Text test blah yadda yadda random really wowehie";
   char plaintext[10000], outtext[10000], server_message[10000];
 
-  encrypt(message, outtext, keyfile);
+ 
   printf("encrypted, encoded message = %s\n", outtext);
   send(s, outtext, sizeof(outtext), 0);
 
   recv(s, server_message, sizeof(server_message), 0);
-  printf("message received back from server = %s\n", server_message);
-  
-  decrypt(server_message, plaintext, keyfile);
-  rewind(keyfile);
+  printf("message received back from server = %s\n", server_message);*/
 
-  printf("decrypted message = %s\n", plaintext);
+  sscanf(response, "%s %i %s %i %s", char1, &entry_num, char2, &entry_len, message);
+
+  //  printf("char2 = %s\n", char2);
+
+  if (strcmp(char2, "c") == 0)
+    // if the entry is encrypted, we want to decrypt it
+    {
+      decrypt(message, plaintext, keyfile);
+      rewind(keyfile);
+      printf("%s%i%s%i%s\n", char1, entry_num, char2, entry_len, plaintext); 
+    }
+
+  else
+    // otherwise we just print out the whole thing without doing anything to it
+    {
+      printf("%s\n", response);
+    }
 
   
   //read (s, &number, sizeof (number));
-  close (s);
+  // close (s);
   //fprintf (stderr, "Process %d gets number %d\n", getpid (),
   //	     ntohl (number));
-  sleep (2);
-  
+  //sleep (2);
+
   
   //free(base64_encoded);
   //free(base64_decoded);
@@ -320,7 +336,7 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
       if (fgets(key, 33, keyfile) != NULL)
 	{
 
-	  printf("key = %s\n", key);
+	  //printf("key = %s\n", key);
 	  //printf("key length = %li\n", sizeof(key));
 	  
 
@@ -333,10 +349,10 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
 
 	  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
 
-	  printf("original plaintext message = %s\n", intext);
+	  //printf("original plaintext message = %s\n", intext);
     
 	  string_length = strlen(intext);
-	  printf("original string_length = %lf\n", string_length);
+	  //printf("original string_length = %lf\n", string_length);
 	  
 	  
 	  if(!EVP_EncryptUpdate(&ctx, outtext, &outlen, intext, strlen(intext))) {
@@ -370,5 +386,130 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
       printf("encryption not possible without a keyfile\n");
       return 0;
     }
+
+}
+
+void plaintext_entry(int s)
+{
+
+  char response[10000], user_input[10000], entry_num[10], entry_len[10], intext[10000];
+  int entry_len_int;
+
+  printf("What is the message you would like to send?\n");
+
+  fgets(user_input, sizeof(user_input), stdin);
+  
+  entry_len_int = (strlen(user_input) - 1);
+
+  // need to convert the length of the input to string so it can be concatenated
+  sprintf(entry_len, "%i", entry_len_int);
+
+  //printf("entry_len = %s\n", entry_len);
+
+  printf("What is the number of the whiteboard entry you would like to update?\n");
+
+  fgets(entry_num, sizeof(entry_num), stdin);
+
+  // need to remove newline at the end of input
+  entry_num[strcspn(entry_num, "\n")] = 0;
+  
+  strcat(intext, "@");
+  strcat(intext, entry_num);
+  strcat(intext, "p");
+  strcat(intext, entry_len);
+  strcat(intext, "\n");
+  strcat(intext, user_input);
+  strcat(intext, "\n");
+  
+  //printf("sent = %s\n", intext);
+
+  send(s, intext, sizeof(intext), 0);
+
+  recv(s, response, sizeof(response), 0);
+
+  printf("response = %s\n", response);
+
+  memset(intext, 0, sizeof(intext));
+  memset(response, 0, sizeof(response));
+
+  //printf("%s\n", response); 
+
+}
+
+void encrypted_entry(int s, FILE * keyfile)
+{
+
+  char response[10000], entry_num[10], entry_len[10], intext[10000], outtext[10000], prepend1[10000], prepend2[] = "CMPUT379 Whiteboard Encrypted v0\n";
+  int entry_len_int;
+
+  printf("What is the message you would like to send?\n");
+
+  fgets(intext, sizeof(intext), stdin);
+
+  strcat(prepend2, intext);
+
+  //printf("prepend2 = %s\n", prepend2);
+
+  printf("What is the number of the whiteboard entry you would like to update?\n");
+
+  fgets(entry_num, sizeof(entry_num), stdin);
+
+  // need to remove newline at the end of input
+  entry_num[strcspn(entry_num, "\n")] = 0;
+  
+  strcat(prepend1, "@");
+  strcat(prepend1, entry_num);
+  strcat(prepend1, "c");
+  
+  encrypt(prepend2, outtext, keyfile);
+  
+  entry_len_int = (strlen(outtext));
+  // need to convert the length of the input to string so it can be concatenated
+  sprintf(entry_len, "%i", entry_len_int);
+  //printf("entry_len = %s\n", entry_len);
+
+  strcat(prepend1, entry_len);
+  strcat(prepend1, "\n");
+
+
+  strcat(prepend1, outtext);
+
+  //printf("sent = %s\n", prepend1);
+
+  send(s, prepend1, sizeof(prepend1), 0);
+
+  recv(s, response, sizeof(response), 0);
+
+  printf("response = %s\n", response);
+
+  //printf("%s\n", response); 
+
+  memset(prepend1, 0, sizeof(prepend1));
+  memset(response, 0, sizeof(response));
+
+}
+
+void clean_entry(int s)
+{
+
+  char entry_num[10], message[1000], reply[10000];
+
+  printf("Which entry do you want to clean?\n");
+
+  fgets(entry_num, sizeof(entry_num), stdin);
+
+  entry_num[strcspn(entry_num, "\n")] = 0;
+  
+  strcat(message, "@");
+  strcat(message, entry_num);
+  strcat(message, "p0\n\n");
+
+  //printf("message = %s\n", message);
+
+  send(s, message, sizeof(message), 0);
+
+  recv(s, reply, sizeof(reply), 0);
+
+  printf("reply = %s\n", reply);
 
 }

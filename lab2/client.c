@@ -245,7 +245,10 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
     while ((fgets(key, 33, keyfile) != NULL))
       {
 	
-	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	int bytes_to_decode = strlen(key);
+	char * decoded_key = base64decode(key, bytes_to_decode);
+	
+	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, decoded_key, iv);
 	
 	
 	ciphertext_len = strlen(ciphertext);
@@ -349,10 +352,14 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
 	  rewind(keyfile);
 
 
+	  int bytes_to_decode = strlen(key);
+	  char * decoded_key = base64decode(key, bytes_to_decode);
+
+
 	  // alright so at this point I know that the key is properly being read in from the file, and that the key is the proper length (32)
 	  
 
-	  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, decoded_key, iv);
 
 	  //printf("original plaintext message = %s\n", intext);
     

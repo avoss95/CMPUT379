@@ -134,7 +134,7 @@ void send_query(int s, FILE * keyfile)
   
   printf("Which entry of the whiteboard would you like to receive?\n");
 
-  char response[10000], query[10000], char1[10], char2[10], message[10000], plaintext[10000], prepend[] = "?";
+  char response[10000], query[10000], char1[10],  message[10000], plaintext[10000], prepend[] = "?";
 
   int entry_num, entry_len;
 
@@ -143,7 +143,7 @@ void send_query(int s, FILE * keyfile)
   strcat(prepend, query);
   strcat(prepend, "\n");
 
-  // printf("sent = %s\n", prepend);
+  printf("sent = %s\n", prepend);
   
   send(s, prepend, sizeof(prepend), 0);
 
@@ -160,16 +160,29 @@ void send_query(int s, FILE * keyfile)
   recv(s, server_message, sizeof(server_message), 0);
   printf("message received back from server = %s\n", server_message);*/
 
-  sscanf(response, "%s %i %s %i %s", char1, &entry_num, char2, &entry_len, message);
+  // this is the slightly absurd gymnastics I had to do in order to isolate the "c" character if it was in the message
 
-  //  printf("char2 = %s\n", char2);
+  sscanf(response, "%s %s", char1, message);
 
-  if (strcmp(char2, "c") == 0)
+  char char_to_find = 'c';
+  char * found_char = strchr(char1, char_to_find);
+  char isolated_char[2];
+
+  strncpy(isolated_char, found_char, 1);
+
+  if (strcmp(isolated_char, "c") == 0)
     // if the entry is encrypted, we want to decrypt it
-    {
-      decrypt(message, plaintext, keyfile);
-      rewind(keyfile);
-      printf("%s%i%s%i%s\n", char1, entry_num, char2, entry_len, plaintext); 
+    { 
+      if (keyfile != NULL)
+	{
+	  decrypt(message, plaintext, keyfile);
+	  rewind(keyfile);
+	  printf("%s\n", plaintext); 
+	}
+      else
+	{
+	  printf("Cannot decrypt without a keyfile.\n");
+	}
     }
 
   else
@@ -177,7 +190,7 @@ void send_query(int s, FILE * keyfile)
     {
       printf("%s\n", response);
     }
-
+  
   
   //read (s, &number, sizeof (number));
   // close (s);
@@ -421,7 +434,7 @@ void plaintext_entry(int s)
   strcat(intext, user_input);
   strcat(intext, "\n");
   
-  //printf("sent = %s\n", intext);
+  printf("sent = %s\n", intext);
 
   send(s, intext, sizeof(intext), 0);
 
@@ -470,19 +483,19 @@ void encrypted_entry(int s, FILE * keyfile)
 
   strcat(prepend1, entry_len);
   strcat(prepend1, "\n");
-
+  strcat(outtext, "\n");
+  
+  //printf("prepend1 = %s\n", prepend1);
 
   strcat(prepend1, outtext);
 
-  //printf("sent = %s\n", prepend1);
+  printf("sent = %s\n", prepend1);
 
   send(s, prepend1, sizeof(prepend1), 0);
 
   recv(s, response, sizeof(response), 0);
 
   printf("response = %s\n", response);
-
-  //printf("%s\n", response); 
 
   memset(prepend1, 0, sizeof(prepend1));
   memset(response, 0, sizeof(response));
@@ -504,7 +517,7 @@ void clean_entry(int s)
   strcat(message, entry_num);
   strcat(message, "p0\n\n");
 
-  //printf("message = %s\n", message);
+  printf("message = %s\n", message);
 
   send(s, message, sizeof(message), 0);
 

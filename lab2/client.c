@@ -175,9 +175,11 @@ void send_query(int s, FILE * keyfile)
     { 
       if (keyfile != NULL)
 	{
-	  decrypt(message, plaintext, keyfile);
-	  rewind(keyfile);
-	  printf("%s\n", plaintext); 
+	  if (decrypt(message, plaintext, keyfile) != 0)
+	    {
+	      rewind(keyfile);
+	      printf("%s\n", plaintext); 
+	    }
 	}
       else
 	{
@@ -191,16 +193,6 @@ void send_query(int s, FILE * keyfile)
       printf("%s\n", response);
     }
   
-  
-  //read (s, &number, sizeof (number));
-  // close (s);
-  //fprintf (stderr, "Process %d gets number %d\n", getpid (),
-  //	     ntohl (number));
-  //sleep (2);
-
-  
-  //free(base64_encoded);
-  //free(base64_decoded);
 }
  
 char *base64decode (const void *b64_decode_this, int decode_this_many_bytes){
@@ -257,7 +249,7 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
 	
 	
 	ciphertext_len = strlen(ciphertext);
-	printf("string_length after base64 decoding = %lf\n", ciphertext_len);
+	//printf("string_length after base64 decoding = %lf\n", ciphertext_len);
 	
 
 	if(!EVP_DecryptUpdate(&ctx, plaintext, &len, ciphertext, ciphertext_len)) {
@@ -267,7 +259,7 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
 	if (strncmp(plaintext, "CMPUT379", 8) == 0)
 	  {
 	    successful_decrypt = true;
-	    printf("decrypt succeeded\n");
+	    //  printf("decrypt succeeded\n");
 	    break;
 	  }
 	
@@ -434,7 +426,7 @@ void plaintext_entry(int s)
   strcat(intext, user_input);
   strcat(intext, "\n");
   
-  printf("sent = %s\n", intext);
+  //  printf("sent = %s\n", intext);
 
   send(s, intext, sizeof(intext), 0);
 
@@ -474,31 +466,34 @@ void encrypted_entry(int s, FILE * keyfile)
   strcat(prepend1, entry_num);
   strcat(prepend1, "c");
   
-  encrypt(prepend2, outtext, keyfile);
+  if (encrypt(prepend2, outtext, keyfile) != 0)
+    {
   
-  entry_len_int = (strlen(outtext));
-  // need to convert the length of the input to string so it can be concatenated
-  sprintf(entry_len, "%i", entry_len_int);
-  //printf("entry_len = %s\n", entry_len);
+      entry_len_int = (strlen(outtext));
+      // need to convert the length of the input to string so it can be concatenated
+      sprintf(entry_len, "%i", entry_len_int);
+      //printf("entry_len = %s\n", entry_len);
+      
+      strcat(prepend1, entry_len);
+      strcat(prepend1, "\n");
+      strcat(outtext, "\n");
+      
+      //printf("prepend1 = %s\n", prepend1);
+      
+      strcat(prepend1, outtext);
+      
+      //  printf("sent = %s\n", prepend1);
+      
+      send(s, prepend1, sizeof(prepend1), 0);
+      
+      recv(s, response, sizeof(response), 0);
+      
+      printf("response = %s\n", response);
+      
+      memset(prepend1, 0, sizeof(prepend1));
+      memset(response, 0, sizeof(response));
 
-  strcat(prepend1, entry_len);
-  strcat(prepend1, "\n");
-  strcat(outtext, "\n");
-  
-  //printf("prepend1 = %s\n", prepend1);
-
-  strcat(prepend1, outtext);
-
-  printf("sent = %s\n", prepend1);
-
-  send(s, prepend1, sizeof(prepend1), 0);
-
-  recv(s, response, sizeof(response), 0);
-
-  printf("response = %s\n", response);
-
-  memset(prepend1, 0, sizeof(prepend1));
-  memset(response, 0, sizeof(response));
+    }
 
 }
 
@@ -517,7 +512,7 @@ void clean_entry(int s)
   strcat(message, entry_num);
   strcat(message, "p0\n\n");
 
-  printf("message = %s\n", message);
+  //printf("message = %s\n", message);
 
   send(s, message, sizeof(message), 0);
 

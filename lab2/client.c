@@ -42,7 +42,7 @@ int main(int argc, char * argv[])
   
   int i, s, number, n;
 
-  unsigned char greeting[10000]; //, message[10000], plaintext[10000];
+  unsigned char greeting[10000];
 
   struct sockaddr_in server;
   
@@ -73,10 +73,8 @@ int main(int argc, char * argv[])
     exit (1);
   }
   
-  recv(s, greeting, sizeof(greeting), 0);
+  recv(s, greeting, sizeof(greeting), 0);  // I expect a message from the server first thing when I connect, so this handles receiving that message
   printf("%s", greeting);
-
-  //send_query(s, keyfile); //the keyfile is for testing purposes- i will not be using a keyfile for queries, just for encryption/decryption
   
   
   char user_option[1000];
@@ -92,7 +90,7 @@ int main(int argc, char * argv[])
 
       //scanf("%i", &user_option);
 
-      fgets(user_option, sizeof(user_option), stdin);
+      fgets(user_option, sizeof(user_option), stdin);  // fairly straightforward- user enters the number corresponding to what they want to do and the required function is called
       
       if (strncmp(user_option, "1", 1) == 0)
 	{
@@ -120,10 +118,7 @@ int main(int argc, char * argv[])
 	  return 1;
 	}
       
-      /*else
-	{
-	  printf("Please enter in one of the above options\n");
-	  }*/
+      // if the user enters something that is not one of the above options then nothing will happen and it will just show that menu again
 
     } 
 
@@ -140,25 +135,15 @@ void send_query(int s, FILE * keyfile)
 
   fgets(query, sizeof(query), stdin);
 
-  strcat(prepend, query);
+  strcat(prepend, query); // need to send the message in the correct format, so this takes care of that
   strcat(prepend, "\n");
 
-  printf("sent = %s\n", prepend);
+  //printf("sent = %s\n", prepend);
   
   send(s, prepend, sizeof(prepend), 0);
+  //printf("message size = %i\n", n);
 
   recv(s, response, sizeof(response), 0);
-
-  /*
-  char message[] = "CMPUT379some Crypto Text test blah yadda yadda random really wowehie";
-  char plaintext[10000], outtext[10000], server_message[10000];
-
- 
-  printf("encrypted, encoded message = %s\n", outtext);
-  send(s, outtext, sizeof(outtext), 0);
-
-  recv(s, server_message, sizeof(server_message), 0);
-  printf("message received back from server = %s\n", server_message);*/
 
   // this is the slightly absurd gymnastics I had to do in order to isolate the "c" character if it was in the message
 
@@ -168,11 +153,12 @@ void send_query(int s, FILE * keyfile)
   char * found_char = strchr(char1, char_to_find);
   char isolated_char[2];
 
-  strncpy(isolated_char, found_char, 1);
+  //  printf("found_char = %s\n", found_char);
 
-  if (strcmp(isolated_char, "c") == 0)
+  if ( (strcmp(isolated_char, "c") == 0) && (found_char != NULL))
     // if the entry is encrypted, we want to decrypt it
     { 
+      strncpy(isolated_char, found_char, 1);
       if (keyfile != NULL)
 	{
 	  if (decrypt(message, plaintext, keyfile) != 0)
@@ -242,10 +228,10 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
     
     strcpy(ciphertext, base64_decoded);
   
-    while ((fgets(key, 33, keyfile) != NULL))
+    while ((fgets(key, 33, keyfile) != NULL)) // grab the key from the keyfile while there are still keys that haven't been used
       {
 	
-	int bytes_to_decode = strlen(key);
+	int bytes_to_decode = strlen(key); // need to decode the key since it is stored in base64 format
 	char * decoded_key = base64decode(key, bytes_to_decode);
 	
 	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, decoded_key, iv);
@@ -262,7 +248,6 @@ int decrypt(unsigned char *ciphertext, unsigned char *plaintext, FILE * keyfile)
 	if (strncmp(plaintext, "CMPUT379", 8) == 0)
 	  {
 	    successful_decrypt = true;
-	    //  printf("decrypt succeeded\n");
 	    break;
 	  }
 	
@@ -329,7 +314,6 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
   //unsigned char key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
   unsigned char key[32];
   unsigned char iv[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-  //  char intext[] = "some Crypto Text test blah yadda yadda random really really ruownowrni uwrnwirowni owurowurwior 7579"; 
   EVP_CIPHER_CTX ctx;
   FILE *out;
   float string_length, j, k;
@@ -343,20 +327,14 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
       // grab the first key from the keyfile.... I think
       if (fgets(key, 33, keyfile) != NULL)
 	{
-
-	  //printf("key = %s\n", key);
-	  //printf("key length = %li\n", sizeof(key));
 	  
 
-	  // I need to use this because I want to start from the top of the file after every use of fgets
+	  // I need to use this because I want to start from the top of the file
 	  rewind(keyfile);
 
 
-	  int bytes_to_decode = strlen(key);
+	  int bytes_to_decode = strlen(key); // still need to decode the key from the keyfile since it is stored in base64 format
 	  char * decoded_key = base64decode(key, bytes_to_decode);
-
-
-	  // alright so at this point I know that the key is properly being read in from the file, and that the key is the proper length (32)
 	  
 
 	  EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, decoded_key, iv);
@@ -379,10 +357,6 @@ int encrypt(unsigned char * intext, unsigned char * outtext, FILE * keyfile) {
 	  outlen += tmplen;
 	  EVP_CIPHER_CTX_cleanup(&ctx);
 
-	  //    for  (i=0; i<=outlen-1; i++){
-	  //printf("%c", outbuf[i]);
-	  //}
-	  
 	  int bytes_to_encode = outlen; //Number of bytes in string to base64 encode.
 	  
 	  char *base64_encoded = base64encode(outtext, bytes_to_encode);   //Base-64 encoding.
@@ -411,12 +385,10 @@ void plaintext_entry(int s)
 
   fgets(user_input, sizeof(user_input), stdin);
   
-  entry_len_int = (strlen(user_input) - 1);
+  entry_len_int = (strlen(user_input) - 1); // there is a small off-by-one error if I don't do this
 
   // need to convert the length of the input to string so it can be concatenated
   sprintf(entry_len, "%i", entry_len_int);
-
-  //printf("entry_len = %s\n", entry_len);
 
   printf("What is the number of the whiteboard entry you would like to update?\n");
 
@@ -428,7 +400,7 @@ void plaintext_entry(int s)
   strcat(intext, "@");
   strcat(intext, entry_num);
   strcat(intext, "p");
-  strcat(intext, entry_len);
+  strcat(intext, entry_len);  // this is also fairly straighforward- just concatenating all the required parts of the message together
   strcat(intext, "\n");
   strcat(intext, user_input);
   strcat(intext, "\n");
@@ -439,7 +411,7 @@ void plaintext_entry(int s)
 
   recv(s, response, sizeof(response), 0);
 
-  printf("response = %s\n", response);
+  printf("%s\n", response);
 
   memset(intext, 0, sizeof(intext));
   memset(response, 0, sizeof(response));
@@ -473,7 +445,7 @@ void encrypted_entry(int s, FILE * keyfile)
   strcat(prepend1, entry_num);
   strcat(prepend1, "c");
   
-  if (encrypt(prepend2, outtext, keyfile) != 0)
+  if (encrypt(prepend2, outtext, keyfile) != 0) //only happens if there is a keyfile
     {
   
       entry_len_int = (strlen(outtext));
@@ -495,7 +467,7 @@ void encrypted_entry(int s, FILE * keyfile)
       
       recv(s, response, sizeof(response), 0);
       
-      printf("response = %s\n", response);
+      printf("%s\n", response);
       
       memset(prepend1, 0, sizeof(prepend1));
       memset(response, 0, sizeof(response));
@@ -513,7 +485,7 @@ void clean_entry(int s)
 
   fgets(entry_num, sizeof(entry_num), stdin);
 
-  entry_num[strcspn(entry_num, "\n")] = 0;
+  entry_num[strcspn(entry_num, "\n")] = 0; //remove the newline since we need to concatenate stuff before the newline
   
   strcat(message, "@");
   strcat(message, entry_num);
@@ -525,6 +497,6 @@ void clean_entry(int s)
 
   recv(s, reply, sizeof(reply), 0);
 
-  printf("reply = %s\n", reply);
+  printf("%s\n", reply);
 
 }
